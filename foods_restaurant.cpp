@@ -29,6 +29,7 @@ void saveMenu() {
         cout << "Error saving menu!" << endl;
         return;
     }
+
     for (map<string, MenuItem>::const_iterator it = menu.begin(); it != menu.end(); ++it) {
         file << it->first << "," << it->second.allergy << "," << it->second.price << "\n";
     }
@@ -102,6 +103,7 @@ string getMenuItemNameFromInput() {
     return input;
 }
 
+
 // แสดงรายการเมนูทั้งหมด
 void displayMenu() {
     if (menu.empty()) {
@@ -139,6 +141,7 @@ void recommendMenu() {
     }
     cout << "\n---- Recommended Menu ----" << endl;
     int count = 0;
+
     for (map<string, MenuItem>::const_iterator it = menu.begin(); it != menu.end(); ++it) {
         cout << "- " << it->first 
              << " (Allergy: " << it->second.allergy << ")"
@@ -154,6 +157,7 @@ void orderFood() {
         cout << "\nMenu is empty! Cannot place an order." << endl;
         return;
     }
+
     // เปลี่ยนจาก initializer list เป็นการใช้ make_pair และเว้นวรรคระหว่าง > >
     vector< pair<string, int> > order;
     displayMenu();
@@ -225,6 +229,7 @@ void customerMode() {
         }
     }
 }
+
 
 // เพิ่มรายการเมนูใหม่
 void addMenuItem() {
