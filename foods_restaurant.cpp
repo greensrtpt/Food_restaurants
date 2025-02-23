@@ -6,20 +6,24 @@
 #include <map>
 #include <limits>
 using namespace std;
+struct MenuItem {
+    string allergy;
+    double price;
+};
 
-map<string, double> menu;
+map<string, MenuItem> menu; 
 map<int, string> itemNumbers;
 const string ownerPassword = "1234"; // รหัสผ่านของเจ้าของร้าน
 
 void savemenu() {
-    ofstream file("menu.txt");  
+    ofstream file("menu.txt");
     if (!file) {
         cout << "Error saving menu!\n";
         return;
     }
 
     for (const auto& item : menu) {
-        file << item.first << "," << item.second << "\n";
+        file << item.first << "," << item.second.allergy << "," << item.second.price << "\n";
     }
 
     file.close();
@@ -33,13 +37,37 @@ void loadmenu() {
     }
 
     menu.clear();
-    string line, name;
-    double price;
+    string line, name, allergy, priceStr;
 
     while (getline(file, line)) {
         stringstream ss(line);
-        if (getline(ss, name, ',') && (ss >> price)) {
-            menu[name] = price;
+        if (getline(ss, name, ',') && getline(ss, allergy, ',') && getline(ss, priceStr)) {
+            try {
+                double price = stod(priceStr);
+                menu[name] = {allergy, price};
+            } catch (...) {
+                cout << "Error loading line: " << line << " (Skipping)\n";
+            }
+        }
+    }
+
+    file.close();
+}
+
+
+
+    menu.clear();
+    string line, name, allergy, priceStr;
+
+    while (getline(file, line)) {
+        stringstream ss(line);
+        if (getline(ss, name, ',') && getline(ss, allergy, ',') && getline(ss, priceStr)) {
+            try {
+                double price = stod(priceStr);
+                menu[name] = {allergy, price};
+            } catch (...) {
+                cout << "Error loading line: " << line << " (Skipping)\n";
+            }
         }
     }
 
@@ -62,12 +90,15 @@ void menudisplay() {
         cout << "\n------ Menu ------\n";
         int index = 1;
         for (const auto &item : menu) {
-            cout << "[" << index << "] " << item.first << " - $" << fixed << setprecision(2) << item.second << "\n";
+            cout << "[" << index << "] " << item.first 
+                 << " - Allergy: " << item.second.allergy
+                 << " - $" << fixed << setprecision(2) << item.second.price << "\n";
             index++;
         }
         recheckItemNumbers();
     }
 }
+
 
 void searchmenu() {
     string itemName;
@@ -77,12 +108,13 @@ void searchmenu() {
 
     auto it = menu.find(itemName);
     if (it != menu.end()) {
-        cout << "\nItem found: " << it->first << " - $" << fixed << setprecision(2) << it->second << "\n";
+        cout << "\nItem found: " << it->first 
+             << " - Allergy: " << it->second.allergy
+             << " - $" << fixed << setprecision(2) << it->second.price << "\n";
     } else {
         cout << "\nItem not found in the menu!\n";
     }
 }
-
 
 void recommendedmenu() {
     if (menu.empty()) {
@@ -93,7 +125,9 @@ void recommendedmenu() {
     cout << "\n---- Recommended Menu ----\n";
     int count = 0;
     for (const auto &item : menu) {
-        cout << "- " << item.first << " - $" << fixed << setprecision(2) << item.second << "\n";
+        cout << "- " << item.first 
+             << " (Allergy: " << item.second.allergy << ")"
+             << " - $" << fixed << setprecision(2) << item.second.price << "\n";
         if (++count >= 3) break; 
     }
 }
@@ -105,39 +139,63 @@ void orderfood() {
     }
 
     vector<pair<string, int>> order;
+    int itemNumber;
     string itemName;
     int quantity;
     char more;
 
+    menudisplay();
+    recheckItemNumbers();
+
+    cin.ignore(); // ใช้แค่ครั้งเดียวก่อนลูป
     do {
-        cout << "\nEnter the name of the menu item to order: ";
-        cin.ignore();
-        getline(cin, itemName);
+        cout << "\nEnter the menu item number or name to order: ";
+        string input;
+        getline(cin, input);
+
+        try {
+            itemNumber = stoi(input);
+            if (itemNumbers.find(itemNumber) != itemNumbers.end()) {
+                itemName = itemNumbers[itemNumber];
+            } else {
+                cout << "Invalid item number.\n";
+                continue;
+            }
+        } catch (...) {
+            itemName = input;
+        }
 
         if (menu.find(itemName) != menu.end()) {
             cout << "Enter quantity: ";
             cin >> quantity;
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
             order.push_back({itemName, quantity});
-            cout << "Added " << quantity << "x " << itemName << " to your order.\n";
+            cout << "Added " << quantity << "x " << itemName 
+                 << " (Allergy: " << menu[itemName].allergy << ")"
+                 << " to your order.\n";
         } else {
             cout << "Item not found in the menu!\n";
         }
 
         cout << "Do you want to order more? (y/n): ";
         cin >> more;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // ป้องกันการข้ามอินพุต
     } while (more == 'y' || more == 'Y');
 
     cout << "\n------ Your Order ------\n";
     double total = 0;
     for (const auto &item : order) {
-        double price = menu[item.first] * item.second;
-        cout << item.second << "x " << item.first << " - $" << fixed << setprecision(2) << price << "\n";
+        double price = menu[item.first].price * item.second;
+        cout << item.second << "x " << item.first 
+             << " - $" << fixed << setprecision(2) << price << "\n";
         total += price;
     }
     cout << "------------------------\n";
     cout << "Total: $" << fixed << setprecision(2) << total << "\n";
 }
+
+
 
 void customermode() {
     while (true) {
@@ -170,19 +228,23 @@ void customermode() {
 
 
 void addmenuitem() {
-    string itemName;
+    string itemName, allergy;
     double itemPrice;
 
     cout << "\nEnter new menu item name: ";
     cin.ignore(); 
     getline(cin, itemName);
 
+    cout << "Enter allergy information (if none, type '-'): ";
+    getline(cin, allergy);
+
     cout << "Enter price for " << itemName << ": ";
     cin >> itemPrice;
 
-    menu[itemName] = itemPrice;
+    menu[itemName] = {allergy, itemPrice};
     savemenu();
-    cout << itemName << " has been added to the menu with a price of $" << itemPrice << "\n";
+    cout << itemName << " has been added to the menu with a price of $" 
+         << itemPrice << " and allergy information: " << allergy << "\n";
 }
 
 void removemenuitem() {
